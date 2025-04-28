@@ -43,12 +43,11 @@ A REST API for sending and receiving SMS messages through a GSM module, built wi
    API_KEY=your_api_key_here
    SECRET_KEY=your_secret_key_here
    SIMULATION_MODE=True  # Set to False when using real GSM hardware
-
-use this 
-SIMULATION_MODE=True
-GSM_PORT=COM3 
-GSM_BAUDRATE=9600
-API_KEY=test_api_key
+   use this 
+   SIMULATION_MODE=True
+   GSM_PORT=COM3 
+   GSM_BAUDRATE=9600
+   API_KEY=test_api_key
 
    ```
 
