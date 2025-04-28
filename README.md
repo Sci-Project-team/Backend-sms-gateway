@@ -23,7 +23,7 @@ A REST API for sending and receiving SMS messages through a GSM module, built wi
 
 1. Clone the repository:
    ```
-   git clone https://github.com/yourusername/sms-gateway-api.git
+   git clone https://github.com/Sci-Project-team/Backend-sms-gateway.git
    cd sms-gateway-api
    ```
 
