@@ -41,6 +41,19 @@ async def get_inbox(
         return inbox[:limit]
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur lors de la récupération des SMS: {str(e)}")
+@router.get("/sms/sent", response_model=List[SmsResponse], summary="Lister tous les SMS envoyés")
+async def get_sent_messages(
+    limit: Optional[int] = Query(50, description="Nombre maximum de SMS à retourner"),
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """
+    Récupère tous les SMS envoyés (sortants).
+    """
+    try:
+        sent_messages = await storage_service.get_sent_messages()
+        return sent_messages[:limit]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la récupération des SMS envoyés: {str(e)}")
 
 @router.get("/logs", response_model=List[dict], summary="Voir les logs des SMS")
 async def get_logs(
