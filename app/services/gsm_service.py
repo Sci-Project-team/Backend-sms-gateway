@@ -14,7 +14,7 @@ class GSMService:
         self.storage = storage_service
         self.mqtt_service = mqtt_service
         logger.info("GSM service initialized (simulation mode)")
-   
+    
     async def send_sms(self, sms: SmsCreate) -> SmsInDB:
         """Publish phone number and message on MQTT topic emqx/esp32/sendmessage"""
         sms_id = str(uuid.uuid4())
@@ -57,6 +57,7 @@ class GSMService:
             f"SMS {sms_id} {'sent' if success else 'failed'} to {sms.phone_number}",
             {"phone_number": sms.phone_number, "success": success}
         )
+        print(f"SMzzzzzzzzzS {sms_id} {'sent' if success else 'failed'} to {sms.phone_number}")
         
         return sms_in_db
    

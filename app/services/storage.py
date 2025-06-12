@@ -133,6 +133,7 @@ class StorageService:
                  sms.error_message, direction)
             )
             await db.commit()
+            print(f"SMS {sms.id} stored in database with direction {direction}")
             return sms
     
     async def get_sent_messages(self) -> List[SmsInDB]:
