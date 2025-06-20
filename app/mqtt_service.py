@@ -30,6 +30,10 @@ class MQTTService:
             # Subscribe to received messages topic
             client.subscribe("emqx/esp32/receivedmessages")
             logger.info("Subscribed to emqx/esp32/receivedmessages topic")
+            
+            # Subscribe to logs topic
+            client.subscribe("logs")
+            logger.info("Subscribed to logs topic")
         else:
             logger.warning(f"Failed to connect, return code {rc}")
 
@@ -43,6 +47,9 @@ class MQTTService:
             # Handle received SMS messages
             if topic == "emqx/esp32/receivedmessages":
                 self._handle_received_sms(payload)
+            # Handle logs
+            elif topic == "logs":
+                self._handle_log_message(payload)
                 
         except Exception as e:
             logger.error(f"Error processing MQTT message: {e}")
@@ -122,6 +129,50 @@ class MQTTService:
             
         except Exception as e:
             logger.error(f"Failed to store received SMS: {e}")
+
+    def _handle_log_message(self, payload):
+        """Handle log messages and store in database"""
+        try:
+            # Try to parse the payload as JSON
+            try:
+                log_data = json.loads(payload)
+                
+                # Extract required fields with defaults if missing
+                level = log_data.get("level", "INFO").upper()
+                component = log_data.get("component", "EXTERNAL").upper()
+                message = log_data.get("message", "No message provided")
+                metadata = log_data.get("metadata", {})
+                
+            except json.JSONDecodeError:
+                # If not JSON, use the entire payload as the message
+                level = "INFO"
+                component = "EXTERNAL"
+                message = payload
+                metadata = {"raw_payload": True}
+            
+            # Store in database asynchronously
+            if self.storage_service:
+                import asyncio
+                import threading
+                
+                # Create a new thread to handle async database operation
+                def store_async():
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    try:
+                        loop.run_until_complete(
+                            self.storage_service.store_log(level, component, message, metadata)
+                        )
+                        logger.info(f"Log stored: [{level}] [{component}] {message}")
+                    finally:
+                        loop.close()
+                
+                threading.Thread(target=store_async, daemon=True).start()
+            else:
+                logger.warning("Storage service not available for storing logs")
+                
+        except Exception as e:
+            logger.error(f"Error handling log message: {e}")
 
     def start(self):
         if self.is_running:
