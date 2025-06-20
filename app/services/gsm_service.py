@@ -1,5 +1,4 @@
 # app/services/gsm_service.py
-# app/services/gsm_service.py
 import uuid
 import logging
 import json
@@ -15,7 +14,7 @@ class GSMService:
         self.mqtt_service = mqtt_service
         logger.info("GSM service initialized (simulation mode)")
     
-    async def send_sms(self, sms: SmsCreate) -> SmsInDB:
+    async def send_sms(self, sms: SmsCreate, user_id: str = None) -> SmsInDB:
         """Publish phone number and message on MQTT topic emqx/esp32/sendmessage"""
         sms_id = str(uuid.uuid4())
         now = datetime.now()
@@ -46,26 +45,27 @@ class GSMService:
             status=SmsStatus.SENT if success else SmsStatus.FAILED,
             created_at=now,
             updated_at=now,
-            error_message=error_message
+            error_message=error_message,
+            user_id=user_id  # Explicitly set the user_id here
         )
        
-        # Store in database
-        await self.storage.store_sms(sms_in_db, direction="outgoing")
+        # Store in database with user_id
+        stored_sms = await self.storage.store_sms(sms_in_db, direction="outgoing", user_id=user_id)
+        
+        # Log the action
         await self.storage.store_log(
             "INFO" if success else "ERROR", 
             "GSM", 
-            f"SMS {sms_id} {'sent' if success else 'failed'} to {sms.phone_number}",
-            {"phone_number": sms.phone_number, "success": success}
+            f"SMS {sms_id} {'sent' if success else 'failed'} to {sms.phone_number} by user {user_id}",
+            {"phone_number": sms.phone_number, "success": success, "user_id": user_id}
         )
-        print(f"SMzzzzzzzzzS {sms_id} {'sent' if success else 'failed'} to {sms.phone_number}")
         
-        return sms_in_db
+        logger.info(f"SMS sent and stored with ID {sms_id} for user {user_id}")
+        return stored_sms
    
-    # ... rest of your methods remain the same
-
-    async def get_sent_messages(self):
-        """Récupère tous les messages envoyés"""
-        return await self.storage.get_sent_messages()
+    async def get_sent_messages(self, user_id: str = None):
+        """Récupère tous les messages envoyés par l'utilisateur spécifié"""
+        return await self.storage.get_sent_messages(user_id=user_id)
    
     async def get_inbox(self):
         """Récupère les messages reçus"""

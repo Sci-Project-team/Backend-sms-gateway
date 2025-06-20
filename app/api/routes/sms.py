@@ -4,8 +4,10 @@ from typing import List, Optional
 from app.models.sms import SmsCreate, SmsResponse, SmsInboxResponse
 from app.models.user import UserInDB
 from app.core.auth import get_current_user
+import logging
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 @router.post("/sms", response_model=SmsResponse, summary="Envoyer un SMS")
 async def send_sms(
@@ -23,7 +25,9 @@ async def send_sms(
         gsm_service = request.app.state.gsm_service
         if not gsm_service:
             raise HTTPException(status_code=500, detail="GSM service not available")
-        result = await gsm_service.send_sms(sms)
+        
+        # Always pass the user ID from the auth token to associate the SMS with the sender
+        result = await gsm_service.send_sms(sms, user_id=current_user.id)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur lors de l'envoi du SMS: {str(e)}")
@@ -53,15 +57,31 @@ async def get_sent_messages(
     limit: Optional[int] = Query(50, description="Nombre maximum de SMS à retourner")
 ):
     """
-    Récupère tous les SMS envoyés (sortants).
+    Récupère tous les SMS envoyés par l'utilisateur actuel.
     """
     try:
-        storage_service = request.app.state.storage_service
-        if not storage_service:
-            raise HTTPException(status_code=500, detail="Storage service not available")
-        sent_messages = await storage_service.get_sent_messages()
+        # Get the right service - use gsm_service which is consistently used in other routes
+        gsm_service = request.app.state.gsm_service
+        if not gsm_service:
+            raise HTTPException(status_code=500, detail="GSM service not available")
+        
+        # Debug info - log user info
+        logger.info(f"Fetching sent messages for user: {current_user.id} ({current_user.username})")
+        
+        # Pass the user ID for filtering
+        sent_messages = await gsm_service.get_sent_messages(user_id=current_user.id)
+        
+        # Add detailed logging to help debug
+        logger.info(f"Retrieved {len(sent_messages)} messages for user {current_user.id}")
+        
+        # If we have messages, log one as an example
+        if sent_messages:
+            message_example = sent_messages[0]
+            logger.info(f"Sample message: ID={message_example.id}, user_id={message_example.user_id}")
+        
         return sent_messages[:limit]
     except Exception as e:
+        logger.error(f"Error in get_sent_messages: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Erreur lors de la récupération des SMS envoyés: {str(e)}")
 
 @router.get("/logs", response_model=List[dict], summary="Voir les logs des SMS")

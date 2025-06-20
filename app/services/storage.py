@@ -50,7 +50,8 @@ class StorageService:
             created_at TEXT NOT NULL,
             updated_at TEXT,
             error_message TEXT,
-            direction TEXT NOT NULL
+            direction TEXT NOT NULL,
+            user_id TEXT
         )
         ''')
         
@@ -120,43 +121,57 @@ class StorageService:
                     is_active=bool(user_dict['is_active'])
                 )
     
-    async def store_sms(self, sms: SmsInDB, direction: str = "outgoing") -> SmsInDB:
+    async def store_sms(self, sms: SmsInDB, direction: str = "outgoing", user_id: str = None) -> SmsInDB:
         async with aiosqlite.connect(str(DATABASE_PATH)) as db:
             await db.execute(
                 '''
-                INSERT INTO messages (id, phone_number, message, status, created_at, updated_at, error_message, direction)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO messages (id, phone_number, message, status, created_at, updated_at, error_message, direction, user_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''',
                 (sms.id, sms.phone_number, sms.message, sms.status.value, 
                  sms.created_at.isoformat(), 
                  sms.updated_at.isoformat() if sms.updated_at else None,
-                 sms.error_message, direction)
+                 sms.error_message, direction, user_id)
             )
             await db.commit()
-            print(f"SMS {sms.id} stored in database with direction {direction}")
+            print(f"SMS {sms.id} stored in database with direction {direction} for user {user_id}")
             return sms
     
-    async def get_sent_messages(self) -> List[SmsInDB]:
+    async def get_sent_messages(self, user_id: str = None) -> List[SmsInDB]:
         async with aiosqlite.connect(str(DATABASE_PATH)) as db:
-            async with db.execute(
-                'SELECT * FROM messages WHERE direction = "outgoing" ORDER BY created_at DESC'
-            ) as cursor:
+            query = 'SELECT * FROM messages WHERE direction = "outgoing"'
+            params = []
+            
+            if user_id:
+                query += ' AND user_id = ?'
+                params.append(user_id)
+                
+            query += ' ORDER BY created_at DESC'
+            
+            async with db.execute(query, params) as cursor:
                 messages = await cursor.fetchall()
                 columns = [description[0] for description in cursor.description]
                 
                 result = []
                 for message in messages:
                     msg_dict = dict(zip(columns, message))
-                    result.append(SmsInDB(
-                        id=msg_dict['id'],
-                        phone_number=msg_dict['phone_number'],
-                        message=msg_dict['message'],
-                        status=SmsStatus(msg_dict['status']),
-                        created_at=datetime.fromisoformat(msg_dict['created_at']),
-                        updated_at=datetime.fromisoformat(msg_dict['updated_at']) if msg_dict['updated_at'] else None,
-                        error_message=msg_dict['error_message']
-                    ))
-                return result
+                    try:
+                        result.append(SmsInDB(
+                            id=msg_dict['id'],
+                            phone_number=msg_dict['phone_number'],
+                            message=msg_dict['message'],
+                            status=SmsStatus(msg_dict['status']),
+                            created_at=datetime.fromisoformat(msg_dict['created_at']),
+                            updated_at=datetime.fromisoformat(msg_dict['updated_at']) if msg_dict['updated_at'] else None,
+                            error_message=msg_dict['error_message'],
+                            user_id=msg_dict['user_id']
+                        ))
+                    except Exception as e:
+                        logger.error(f"Error creating SmsInDB object: {e}, data: {msg_dict}")
+                
+            # Debug logging
+            logger.info(f"Retrieved {len(result)} SMS messages for user_id={user_id}")
+            return result
     
     async def get_inbox(self) -> List[SmsInDB]:
         async with aiosqlite.connect(str(DATABASE_PATH)) as db:
