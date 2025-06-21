@@ -64,16 +64,7 @@ function main() {
                     console.log(smsData);
                 }
 
-                // 5. Check inbox
-                console.log('\n4. Checking inbox...');
-                smsApi.getInboxSmsInboxGet((inboxError, inboxData, inboxResponse) => {
-                    if (inboxError) {
-                        console.error('Exception when calling SMSApi.getInboxSmsInboxGet:', inboxError.response ? inboxError.response.text : inboxError.message);
-                    } else {
-                        console.log('Inbox:');
-                        console.log(inboxData);
-                    }
-                });
+                
             });
         });
     });

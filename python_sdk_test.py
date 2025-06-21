@@ -74,14 +74,6 @@ def main():
         except ApiException as e:
             print("Exception when calling SMSApi->send_sms_sms_post: %s\n" % e)
             
-        # 5. Check inbox
-        try:
-            print("\n4. Checking inbox...")
-            api_response = sms_api_auth.get_inbox_sms_inbox_get()
-            print("Inbox:")
-            pprint(api_response)
-        except ApiException as e:
-            print("Exception when calling SMSApi->get_inbox_sms_inbox_get: %s\n" % e)
 
 
 if __name__ == "__main__":
