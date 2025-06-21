@@ -1,0 +1,12 @@
+{
+  "name": "sdk-test",
+  "version": "1.0.0",
+  "description": "Test script for sms-gateway-api SDKs",
+  "main": "javascript_sdk_test.js",
+  "scripts": {
+    "test:js": "node javascript_sdk_test.js"
+  },
+  "dependencies": {
+    "sms_gateway_api": "file:sdk-js"
+  }
+} 
